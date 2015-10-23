@@ -539,6 +539,34 @@ class GolangconfigTests(unittest.TestCase):
             )
             self.assertTrue('does not exist on the filesystem' in sys.stdout.getvalue())
 
+    def test_setting_value_multiple_gopath_one_not_existing(self):
+        shell = '/bin/bash'
+        env = {
+            'GOPATH': '{tempdir}bin%s{tempdir}usr/bin' % os.pathsep
+        }
+        with GolangConfigMock(shell, env, None, None, {'debug': True}) as mock_context:
+            mock_context.replace_tempdir_env()
+            mock_context.make_dirs(['usr/bin'])
+            self.assertEquals(
+                (None, None),
+                golangconfig.setting_value('GOPATH', mock_context.view, mock_context.window)
+            )
+            self.assertTrue('one of the values for GOPATH' in sys.stdout.getvalue())
+
+    def test_setting_value_multiple_gopath(self):
+        shell = '/bin/bash'
+        env = {
+            'GOPATH': '{tempdir}bin%s{tempdir}usr/bin' % os.pathsep
+        }
+        with GolangConfigMock(shell, env, None, None, {'debug': True}) as mock_context:
+            mock_context.replace_tempdir_env()
+            mock_context.make_dirs(['bin', 'usr/bin'])
+            self.assertEquals(
+                (env['GOPATH'], shell),
+                golangconfig.setting_value('GOPATH', mock_context.view, mock_context.window)
+            )
+            self.assertEqual('', sys.stdout.getvalue())
+
     def test_setting_value_gopath_not_string(self):
         shell = '/bin/bash'
         env = {

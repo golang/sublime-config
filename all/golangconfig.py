@@ -289,18 +289,39 @@ def setting_value(setting_name, view=None, window=None):
     # user experience, especially around debugging
     is_str = isinstance(setting, str_cls)
     if is_str:
-        if os.path.exists(setting):
-            return (setting, source)
 
-        if debug_enabled():
-            print(
-                'golangconfig: the value for %s from %s - "%s" - does not exist on the filesystem' %
-                (
-                    setting_name,
-                    source,
-                    setting
-                )
+        multiple_values = False
+
+        if setting_name == 'GOROOT':
+            if os.path.exists(setting):
+                return (setting, source)
+
+        if setting_name == 'GOPATH':
+            values = setting.split(os.pathsep)
+            multiple_values = len(values) > 1
+            missing = False
+
+            for value in values:
+                if not os.path.exists(value):
+                    missing = True
+                    break
+
+            if not missing:
+                return (setting, source)
+
+        if multiple_values:
+            value_desc = "one of the values"
+        else:
+            value_desc = "the value"
+        print(
+            'golangconfig: %s for %s from %s - "%s" - does not exist on the filesystem' %
+            (
+                value_desc,
+                setting_name,
+                source,
+                setting
             )
+        )
 
     elif debug_enabled():
         _debug_unicode_string(setting_name, setting, source)
