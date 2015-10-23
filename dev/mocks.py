@@ -30,7 +30,10 @@ class SublimeViewMock():
         if self.window():
             # In Sublime Text, View objects inherit settings from the window/project
             # unless they are explicitly set on the view, so we replicate that here
-            merged_golang_settings = self.window().project_data().get('settings', {}).get('golang', {}).copy()
+            merged_golang_settings = {}
+            project_data = self.window().project_data()
+            if project_data:
+                merged_golang_settings.update(project_data.get('settings', {}).get('golang', {}).copy())
             merged_golang_settings.update(self._settings)
         elif self._settings:
             merged_golang_settings = self._settings.copy()
@@ -52,6 +55,8 @@ class SublimeWindowMock():
         self._context = context
 
     def project_data(self):
+        if self._settings is None:
+            return None
         return {'settings': {'golang': self._settings}}
 
     def active_view(self):
@@ -214,8 +219,6 @@ class GolangConfigMock():
 
     @property
     def window(self):
-        if self._window_settings is None:
-            return None
         return SublimeWindowMock(self._window_settings, self)
 
     @property

@@ -465,7 +465,7 @@ def _get_most_specific_setting(name, view, window):
 
     window_settings = {}
     if window:
-        if sys.version_info >= (3,):
+        if sys.version_info >= (3,) and window.project_data():
             window_settings = window.project_data().get('settings', {}).get('golang', {})
         elif not view and window.active_view():
             window_settings = window.active_view().settings().get('golang', {})
