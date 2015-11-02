@@ -186,7 +186,7 @@ class GolangconfigTests(unittest.TestCase):
                 'go',
                 ['GOPATH', 'GOROOT'],
                 None,
-                golangconfig.EnvVarError
+                golangconfig.GoRootNotFoundError
             ),
         )
 
@@ -533,11 +533,9 @@ class GolangconfigTests(unittest.TestCase):
             'GOPATH': os.path.join(os.path.expanduser('~'), 'hdjsahkjzhkjzhiashs7hdsuybyusbguycas')
         }
         with GolangConfigMock(shell, env, None, None, {'debug': True}) as mock_context:
-            self.assertEquals(
-                (None, None),
+            def do_test():
                 golangconfig.setting_value('GOPATH', mock_context.view, mock_context.window)
-            )
-            self.assertTrue('does not exist on the filesystem' in sys.stdout.getvalue())
+            self.assertRaises(golangconfig.GoPathNotFoundError, do_test)
 
     def test_setting_value_multiple_gopath_one_not_existing(self):
         shell = '/bin/bash'
@@ -547,11 +545,10 @@ class GolangconfigTests(unittest.TestCase):
         with GolangConfigMock(shell, env, None, None, {'debug': True}) as mock_context:
             mock_context.replace_tempdir_env()
             mock_context.make_dirs(['usr/bin'])
-            self.assertEquals(
-                (None, None),
+
+            def do_test():
                 golangconfig.setting_value('GOPATH', mock_context.view, mock_context.window)
-            )
-            self.assertTrue('one of the values for GOPATH' in sys.stdout.getvalue())
+            self.assertRaises(golangconfig.GoPathNotFoundError, do_test)
 
     def test_setting_value_multiple_gopath(self):
         shell = '/bin/bash'
@@ -573,11 +570,9 @@ class GolangconfigTests(unittest.TestCase):
             'GOPATH': 1
         }
         with GolangConfigMock(shell, env, None, None, {'debug': True}) as mock_context:
-            self.assertEquals(
-                (None, None),
+            def do_test():
                 golangconfig.setting_value('GOPATH', mock_context.view, mock_context.window)
-            )
-            self.assertTrue('is not a string' in sys.stdout.getvalue())
+            self.assertRaises(golangconfig.GoPathNotFoundError, do_test)
 
     def test_subprocess_info_goroot_executable_not_inside(self):
         shell = '/bin/bash'

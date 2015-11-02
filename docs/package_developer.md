@@ -84,6 +84,15 @@ If one of the required environment variables is not set, an
 which is a list of all required environment variables that could not be
 found in the Sublime Text settings, or the shell environment.
 
+If the `GOROOT` environment variable points to a directory that does not exist
+on disk, the `golangconfig.GoRootNotFoundError()` will be raised. It has one
+attribute `.directory` that contains a unicode string of the `GOROOT` value.
+
+If one or more of the directories specified in the `GOPATH` environment variable
+can not be found on disk, the `golangconfig.GoPathNotFoundError()` will be
+raised. It has one attribute `.directories`, which is a list on unicode strings
+of the directories that could not be found.
+
 ### Requiring the Dependency
 
 When developing a package to utilize `golangconfig`, Package Control needs to be
@@ -116,10 +125,17 @@ command classes derived from `sublime_plugin.WindowCommand` and
 # coding: utf-8
 from __future__ import unicode_literals
 
+import sys
+
 import sublime
 import sublime_plugin
 
 import golangconfig
+
+if sys.version_info < (3,):
+    str_cls = unicode
+else:
+    str_cls = str
 
 
 class MyWindowCommand(sublime_plugin.WindowCommand):
@@ -176,6 +192,23 @@ class MyWindowCommand(sublime_plugin.WindowCommand):
             plural = 's' if len(e.missing) > 1 else ''
             setting_names = ', '.join(e.missing)
             prompt = error_message % (plural, setting_names)
+
+            if sublime.ok_cancel_dialog(prompt, 'Open Documentation'):
+                self.window.run_command(
+                    'open_url',
+                    {'url': 'http://example.com/documentation'}
+                )
+
+        except (golangconfig.GoRootNotFoundError, golangconfig.GoPathNotFoundError) as e:
+            error_message = '''
+                My Package
+
+                %s.
+
+                Would you like to view the configuration documentation?
+            '''
+
+            prompt = error_message % str_cls(e)
 
             if sublime.ok_cancel_dialog(prompt, 'Open Documentation'):
                 self.window.run_command(

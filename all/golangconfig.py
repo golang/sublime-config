@@ -15,8 +15,8 @@ else:
     py2 = False
 
 
-__version__ = '1.0.0-beta'
-__version_info__ = (1, 0, 0, 'beta')
+__version__ = '0.9.0'
+__version_info__ = (0, 9, 0)
 
 
 # The sublime.platform() function will not be available in ST3 upon initial
@@ -43,6 +43,24 @@ class EnvVarError(EnvironmentError):
     """
 
     missing = None
+
+
+class GoRootNotFoundError(EnvironmentError):
+
+    """
+    An error occurred finding the $GOROOT on disk
+    """
+
+    directory = None
+
+
+class GoPathNotFoundError(EnvironmentError):
+
+    """
+    An error occurred finding one or more directories from $GOPATH on disk
+    """
+
+    directories = None
 
 
 class ExecutableError(EnvironmentError):
@@ -115,6 +133,19 @@ def subprocess_info(executable_name, required_vars, optional_vars=None, view=Non
             attribute contains the name of the executable that could not be
             located. The .dirs attribute contains a list of unicode strings
             of the directories searched.
+        golangconfig.EnvVarError
+            When one or more required_vars are not available. The .missing
+            attribute will be a list of the names of missing environment
+            variables.
+        golangconfig.GoPathNotFoundError
+            When one or more directories specified by the GOPATH environment
+            variable could not be found on disk. The .directories attribute will
+            be a list of the directories that could not be found.
+        golangconfig.GoRootNotFoundError
+            When the directory specified by GOROOT environment variable could
+            not be found on disk. The .directory attribute will be the path to
+            the directory that could not be found.
+
         golangconfig.EnvVarError
             When one or more required_vars are not available. The .missing
             attribute will be a list of the names of missing environment
@@ -245,6 +276,14 @@ def setting_value(setting_name, view=None, window=None):
             When the function is called from any thread but the UI thread
         TypeError
             When any of the parameters are of the wrong type
+        golangconfig.GoPathNotFoundError
+            When one or more directories specified by the GOPATH environment
+            variable could not be found on disk. The .directories attribute will
+            be a list of the directories that could not be found.
+        golangconfig.GoRootNotFoundError
+            When the directory specified by GOROOT environment variable could
+            not be found on disk. The .directory attribute will be the path to
+            the directory that could not be found.
 
     :return:
         A two-element tuple.
@@ -285,48 +324,51 @@ def setting_value(setting_name, view=None, window=None):
     if setting_name not in set(['GOPATH', 'GOROOT']):
         return (setting, source)
 
+    if setting is None and source is None:
+        return (setting, source)
+
     # We add some extra processing here for known settings to improve the
     # user experience, especially around debugging
-    is_str = isinstance(setting, str_cls)
-    if is_str:
+    _debug_unicode_string(setting_name, setting, source)
 
-        multiple_values = False
+    if not isinstance(setting, str_cls):
+        setting = str_cls(setting)
 
-        if setting_name == 'GOROOT':
-            if os.path.exists(setting):
-                return (setting, source)
+    if setting_name == 'GOROOT':
+        if os.path.exists(setting):
+            return (setting, source)
 
-        if setting_name == 'GOPATH':
-            values = setting.split(os.pathsep)
-            multiple_values = len(values) > 1
-            missing = False
+    has_multiple = False
+    if setting_name == 'GOPATH':
+        values = setting.split(os.pathsep)
+        has_multiple = len(values) > 1
+        missing = []
 
-            for value in values:
-                if not os.path.exists(value):
-                    missing = True
-                    break
+        for value in values:
+            if not os.path.exists(value):
+                missing.append(value)
 
-            if not missing:
-                return (setting, source)
+        if not missing:
+            return (setting, source)
 
-        if multiple_values:
-            value_desc = "one of the values"
-        else:
-            value_desc = "the value"
-        print(
-            'golangconfig: %s for %s from %s - "%s" - does not exist on the filesystem' %
-            (
-                value_desc,
-                setting_name,
-                source,
-                setting
-            )
-        )
+    if setting_name == 'GOROOT':
+        message = 'The GOROOT environment variable value "%s" does not exist on the filesystem'
+        e = GoRootNotFoundError(message % setting)
+        e.directory = setting
+        raise e
 
-    elif debug_enabled():
-        _debug_unicode_string(setting_name, setting, source)
+    if not has_multiple:
+        suffix = 'value "%s" does not exist on the filesystem' % missing[0]
+    elif len(missing) == 1:
+        suffix = 'contains the directory "%s" that does not exist on the filesystem' % missing[0]
+    else:
+        paths = ', '.join('"' + path + '"' for path in missing)
+        suffix = 'contains %s directories that do not exist on the filesystem: %s' % (len(missing), paths)
 
-    return (None, None)
+    message = 'The GOPATH environment variable ' + suffix
+    e = GoPathNotFoundError(message)
+    e.directories = missing
+    raise e
 
 
 def executable_path(executable_name, view=None, window=None):
