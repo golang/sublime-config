@@ -34,7 +34,7 @@ project-specific settings. These objects are available via attributes of the
 `sublime_plugin.WindowCommand` and `sublime_plugin.TextCommand` classes.
 
 The `golangconfig` package interacts with Sublime Text's settings API, which
-means that all calls must occur within the UI thread for compatiblity with
+means that all calls must occur within the UI thread for compatibility with
 Sublime Text 2.
 
 ### setting_value()
